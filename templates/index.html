@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>구매검수 결재문 생성기</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <!-- 헤더 -->
+    <header class="app-header">
+      <h1>구매검수 결재문 생성기</h1>
+      <p class="subtitle">입력 후 결재문을 생성하여 복사하세요</p>
+    </header>
+
+    <div class="main-layout">
+      <!-- 좌측: 입력 영역 -->
+      <div class="input-panel">
+
+        <!-- HTML 자동입력 섹션 -->
+        <section class="card" id="section-auto">
+          <div class="card-header">
+            <span class="card-title">🌐 HTML 자동입력</span>
+            <button class="btn-toggle" onclick="toggleSection('auto-body')">접기 ▲</button>
+          </div>
+          <div id="auto-body" class="card-body">
+            <p class="hint">사내 시스템의 페이지 소스(Ctrl+U)를 전체 복사하여 아래에 붙여넣으세요.<br/>
+              파트, 계약명, 계약일, 계약금액, 공급업체, 검수 금액 등을 자동으로 채웁니다.</p>
+            <textarea id="html-input" placeholder="HTML 소스를 여기에 붙여넣으세요..." rows="6"></textarea>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="parseHtml()">자동 입력</button>
+              <button class="btn btn-ghost" onclick="clearHtmlInput()">지우기</button>
+            </div>
+            <div id="parse-status" class="status-msg hidden"></div>
+          </div>
+        </section>
+
+        <!-- 구매대상 섹션 -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">📦 구매대상</span>
+            <button class="btn-toggle" onclick="toggleSection('purchase-body')">접기 ▲</button>
+          </div>
+          <div id="purchase-body" class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>파트 <span class="tag-source web">웹</span></label>
+                <div class="radio-group">
+                  <label class="radio-label"><input type="radio" name="part" value="기계" id="part-mech"> 기계</label>
+                  <label class="radio-label"><input type="radio" name="part" value="전기" id="part-elec"> 전기</label>
+                  <label class="radio-label"><input type="radio" name="part" value="제어" id="part-ctrl"> 제어</label>
+                </div>
+                <input type="text" id="part-custom" placeholder="직접 입력" class="mt-4" />
+              </div>
+              <div class="form-group">
+                <label for="contract-name">계약명 <span class="tag-source web">웹</span></label>
+                <input type="text" id="contract-name" placeholder="계약명 입력" />
+              </div>
+              <div class="form-group">
+                <label for="contract-number">계약번호 <span class="tag-source pdf">PDF</span></label>
+                <input type="text" id="contract-number" placeholder="PDF 참조 후 직접 입력" />
+              </div>
+              <div class="form-group">
+                <label for="contract-date">계약일 <span class="tag-source web">웹</span></label>
+                <input type="text" id="contract-date" placeholder="예: 2024-01-15" />
+              </div>
+              <div class="form-group">
+                <label for="contract-amount">계약금액 <span class="tag-source web">웹</span></label>
+                <input type="text" id="contract-amount" placeholder="예: 12,500,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group">
+                <label for="supplier">공급업체 <span class="tag-source web">웹</span></label>
+                <input type="text" id="supplier" placeholder="공급업체명 입력" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 검수결과 섹션 -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">✅ 검수결과</span>
+            <button class="btn-toggle" onclick="toggleSection('inspection-body')">접기 ▲</button>
+          </div>
+          <div id="inspection-body" class="card-body">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label class="readonly-label">계약번호</label>
+                <input type="text" id="insp-contract-number" placeholder="위 계약번호와 동일하게 자동 반영됩니다" readonly class="readonly-field" />
+              </div>
+              <div class="form-group">
+                <label for="delivery-date">납기일 <span class="tag-source pdf">PDF</span></label>
+                <input type="text" id="delivery-date" placeholder="PDF 참조 후 직접 입력" />
+              </div>
+              <div class="form-group">
+                <label for="inspection-date">검수일 <span class="tag-source pdf">PDF</span> <span class="tag-source hand">수기</span></label>
+                <input type="text" id="inspection-date" placeholder="손글씨 확인 후 직접 입력" />
+              </div>
+              <div class="form-group">
+                <label for="prev-cumulative">전회누계검수 <span class="tag-source web">웹</span></label>
+                <input type="text" id="prev-cumulative" placeholder="예: 5,000,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group">
+                <label for="current-inspection">금회검수금액 <span class="tag-source web">웹</span></label>
+                <input type="text" id="current-inspection" placeholder="예: 3,000,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group">
+                <label for="cumulative-inspection">누적검수금액 <span class="tag-source web">웹</span></label>
+                <input type="text" id="cumulative-inspection" placeholder="예: 8,000,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group">
+                <label for="remaining-amount">미검수잔액 <span class="tag-source web">웹</span></label>
+                <input type="text" id="remaining-amount" placeholder="예: 4,500,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group full-width">
+                <label for="inspection-result">검수결과 <span class="tag-source web">웹</span></label>
+                <input type="text" id="inspection-result" placeholder="예: 합격" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 기타 계약조건 섹션 -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">📋 기타 계약조건</span>
+            <button class="btn-toggle" onclick="toggleSection('other-body')">접기 ▲</button>
+          </div>
+          <div id="other-body" class="card-body">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label class="readonly-label">계약번호</label>
+                <input type="text" id="other-contract-number" placeholder="위 계약번호와 동일하게 자동 반영됩니다" readonly class="readonly-field" />
+              </div>
+              <div class="form-group">
+                <label for="warranty-deposit">하자보증금</label>
+                <input type="text" id="warranty-deposit" placeholder="예: 1,250,000" />
+                <span class="unit-hint">원</span>
+              </div>
+              <div class="form-group">
+                <label for="warranty-period">하자보증기간</label>
+                <input type="text" id="warranty-period" placeholder="예: 1년 (2024.02.01~2025.01.31)" />
+              </div>
+              <div class="form-group full-width">
+                <label for="liquidated-damages">지체상금 <span class="tag-source web">웹</span></label>
+                <input type="text" id="liquidated-damages" placeholder="예: 지체상금 없음 / 1일 0.1%" />
+              </div>
+              <div class="form-group full-width">
+                <label for="delay-reason">지체/면제사유</label>
+                <input type="text" id="delay-reason" placeholder="해당 없음 또는 사유 입력" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 첨부파일 섹션 -->
+        <section class="card">
+          <div class="card-header">
+            <span class="card-title">📎 첨부파일 (입고검사서 등)</span>
+            <button class="btn-toggle" onclick="toggleSection('attach-body')">접기 ▲</button>
+          </div>
+          <div id="attach-body" class="card-body">
+            <p class="hint">PDF 또는 이미지 파일을 첨부하세요. 첨부된 파일은 우측 뷰어에서 확인 가능합니다.<br/>
+              <strong>PDF에서 계약번호, 납기일, 검수일</strong>을 직접 확인하여 위 항목에 입력하세요.</p>
+            <div class="drop-zone" id="drop-zone">
+              <span>파일을 여기에 드래그하거나 클릭하여 선택</span>
+              <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" class="file-input-hidden" />
+            </div>
+            <div id="file-list" class="file-list"></div>
+          </div>
+        </section>
+
+        <!-- 생성 버튼 -->
+        <div class="generate-bar">
+          <button class="btn btn-success btn-lg" onclick="generateDocument()">결재문 생성</button>
+          <button class="btn btn-ghost btn-lg" onclick="resetAll()">전체 초기화</button>
+        </div>
+      </div>
+
+      <!-- 우측: 뷰어 & 결과 패널 -->
+      <div class="right-panel">
+
+        <!-- PDF/이미지 뷰어 -->
+        <section class="card viewer-card">
+          <div class="card-header">
+            <span class="card-title">📄 파일 뷰어</span>
+            <select id="viewer-select" onchange="switchViewer(this.value)">
+              <option value="">-- 첨부파일 선택 --</option>
+            </select>
+          </div>
+          <div id="viewer-body" class="viewer-body">
+            <div class="viewer-placeholder">
+              <p>첨부파일을 업로드하면 여기서 확인할 수 있습니다.<br/>PDF의 계약번호, 납기일, 검수일을 확인하여 좌측 폼에 입력하세요.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 결재문 결과 -->
+        <section class="card result-card">
+          <div class="card-header">
+            <span class="card-title">📝 결재문 미리보기</span>
+            <button class="btn btn-primary btn-sm" onclick="copyOutput()" id="copy-btn" disabled>복사</button>
+          </div>
+          <div class="card-body">
+            <pre id="output-area" class="output-pre">결재문 생성 버튼을 누르면 여기에 결과가 표시됩니다.</pre>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
