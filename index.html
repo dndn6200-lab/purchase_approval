@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>구매검수 결재문 생성기</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #2563eb; --primary-hover: #1d4ed8;
+  --success: #16a34a; --success-hover: #15803d;
+  --danger: #dc2626;
+  --bg: #f1f5f9; --card-bg: #fff; --border: #e2e8f0;
+  --text: #1e293b; --muted: #64748b;
+  --radius: 8px; --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+body { font-family: 'Malgun Gothic','맑은 고딕',-apple-system,sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+.wrap { max-width: 1400px; margin: 0 auto; padding: 16px; }
+header { text-align: center; padding: 20px 0 16px; }
+header h1 { font-size: 22px; font-weight: 700; color: var(--primary); }
+header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+.layout { display: grid; grid-template-columns: 1fr 480px; gap: 16px; align-items: start; }
+@media(max-width:1100px){ .layout { grid-template-columns: 1fr; } }
+
+/* Card */
+.card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 12px; overflow: hidden; }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border-bottom: 1px solid var(--border); }
+.card-title { font-weight: 600; font-size: 14px; }
+.card-body { padding: 14px; }
+
+/* Form */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.fg { display: flex; flex-direction: column; gap: 4px; position: relative; }
+.fg.full { grid-column: 1/-1; }
+label { font-size: 12px; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+input[type=text], textarea, select {
+  width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; font-family: inherit; color: var(--text); background: #fff;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+input.ro { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+textarea { resize: vertical; }
+.unit { position: absolute; right: 10px; bottom: 8px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.mt4 { margin-top: 4px; }
+
+.radio-g { display: flex; gap: 12px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+.rl { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 400; color: var(--text); cursor: pointer; }
+.rl input { cursor: pointer; accent-color: var(--primary); }
+
+/* Tags */
+.tw { display:inline-block; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; line-height:1.4; background:#dbeafe; color:#1d4ed8; }
+.tp { background:#fee2e2; color:#b91c1c; }
+.th { background:#fef9c3; color:#854d0e; }
+
+/* Buttons */
+.btn { display:inline-flex; align-items:center; justify-content:center; padding:7px 14px; border:none; border-radius:6px; font-size:13px; font-family:inherit; font-weight:600; cursor:pointer; transition:background .15s; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.bp { background:var(--primary); color:#fff; } .bp:hover:not(:disabled){ background:var(--primary-hover); }
+.bs { background:var(--success); color:#fff; } .bs:hover:not(:disabled){ background:var(--success-hover); }
+.bg { background:#f1f5f9; color:var(--text); border:1px solid var(--border); } .bg:hover:not(:disabled){ background:#e2e8f0; }
+.sm { padding:4px 10px; font-size:12px; }
+.lg { padding:10px 24px; font-size:15px; }
+.btn-row { display:flex; gap:8px; margin-top:8px; }
+.btog { background:none; border:none; font-size:12px; color:var(--muted); cursor:pointer; padding:2px 6px; }
+.btog:hover { color:var(--text); }
+
+.gen-bar { display:flex; gap:10px; padding:16px 0 4px; justify-content:center; }
+
+/* Status */
+.hint { font-size:12px; color:var(--muted); margin-bottom:8px; line-height:1.6; }
+.smsg { margin-top:8px; padding:7px 10px; border-radius:6px; font-size:12px; }
+.ok { background:#dcfce7; color:#166534; } .err { background:#fee2e2; color:#991b1b; }
+.hide { display:none; }
+
+/* Drop zone */
+.dz { border:2px dashed var(--border); border-radius:var(--radius); padding:24px; text-align:center; color:var(--muted); cursor:pointer; transition:border-color .2s,background .2s; font-size:13px; position:relative; }
+.dz:hover,.dz.over { border-color:var(--primary); background:#eff6ff; color:var(--primary); }
+.dz input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+.flist { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+.fi { display:flex; align-items:center; gap:8px; padding:6px 10px; background:#f8fafc; border:1px solid var(--border); border-radius:6px; font-size:12px; }
+.fi .ico { font-size:16px; flex-shrink:0; }
+.fi .nm { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fi .bv { padding:2px 8px; font-size:11px; background:#dbeafe; color:var(--primary); border:none; border-radius:4px; cursor:pointer; font-weight:600; }
+.fi .br { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:16px; line-height:1; padding:0 2px; }
+.fi .br:hover { color:var(--danger); }
+
+/* Right panel */
+.rp { position:sticky; top:16px; display:flex; flex-direction:column; gap:12px; }
+.vcard .card-head { gap:8px; }
+.vcard select { width:auto; flex:1; font-size:12px; padding:4px 6px; }
+.vbody { min-height:300px; max-height:480px; overflow:auto; background:#f1f5f9; display:flex; align-items:center; justify-content:center; }
+.vph { text-align:center; color:var(--muted); font-size:13px; padding:24px; line-height:1.8; }
+.vbody iframe { width:100%; height:480px; border:none; display:block; }
+.vbody img { max-width:100%; max-height:480px; object-fit:contain; }
+
+.opre { font-family:'Consolas','D2Coding','나눔고딕코딩',monospace; font-size:13px; white-space:pre; background:#0f172a; color:#e2e8f0; padding:14px; border-radius:6px; overflow-x:auto; min-height:120px; line-height:1.7; }
+
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1e293b; color:#fff; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,.3); transition:opacity .3s; }
+.toast.hide { opacity:0; pointer-events:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>구매검수 결재문 생성기</h1>
+    <p>입력 후 결재문을 생성하여 복사하세요</p>
+  </header>
+
+  <div class="layout">
+    <!-- 좌측 입력 -->
+    <div>
+
+      <!-- HTML 자동입력 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">🌐 HTML 자동입력</span>
+          <button class="btog" onclick="tog('ab')">접기 ▲</button>
+        </div>
+        <div id="ab" class="card-body">
+          <p class="hint">사내 시스템 페이지에서 <strong>Ctrl+U</strong> (페이지 소스 보기) → 전체 선택(Ctrl+A) → 복사(Ctrl+C) 후 아래에 붙여넣으세요.<br/>
+          파트·계약명·계약일·계약금액·공급업체·검수금액 등을 자동으로 채웁니다.</p>
+          <textarea id="hi" rows="6" placeholder="HTML 소스를 여기에 붙여넣으세요..."></textarea>
+          <div class="btn-row">
+            <button class="btn bp" onclick="parseHtml()">자동 입력</button>
+            <button class="btn bg" onclick="document.getElementById('hi').value='';document.getElementById('ps').className='smsg hide'">지우기</button>
+          </div>
+          <div id="ps" class="smsg hide"></div>
+        </div>
+      </div>
+
+      <!-- 구매대상 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">📦 구매대상</span>
+          <button class="btog" onclick="tog('pb')">접기 ▲</button>
+        </div>
+        <div id="pb" class="card-body">
+          <div class="grid2">
+            <div class="fg full">
+              <label>파트 <span class="tw">웹</span></label>
+              <div class="radio-g">
+                <label class="rl"><input type="radio" name="part" value="기계"> 기계</label>
+                <label class="rl"><input type="radio" name="part" value="전기"> 전기</label>
+                <label class="rl"><input type="radio" name="part" value="제어"> 제어</label>
+              </div>
+              <input type="text" id="part-custom" placeholder="직접 입력 (위 선택 시 비워두세요)" class="mt4" />
+            </div>
+            <div class="fg">
+              <label>계약명 <span class="tw">웹</span></label>
+              <input type="text" id="contract-name" placeholder="계약명 입력" />
+            </div>
+            <div class="fg">
+              <label>계약번호 <span class="tw tp">PDF</span></label>
+              <input type="text" id="contract-number" placeholder="PDF 확인 후 직접 입력" oninput="syncCN()" />
+            </div>
+            <div class="fg">
+              <label>계약일 <span class="tw">웹</span></label>
+              <input type="text" id="contract-date" placeholder="예: 2024-01-15" />
+            </div>
+            <div class="fg">
+              <label>계약금액 <span class="tw">웹</span></label>
+              <input type="text" id="contract-amount" placeholder="예: 12,500,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>공급업체 <span class="tw">웹</span></label>
+              <input type="text" id="supplier" placeholder="공급업체명 입력" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 검수결과 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">✅ 검수결과</span>
+          <button class="btog" onclick="tog('ib')">접기 ▲</button>
+        </div>
+        <div id="ib" class="card-body">
+          <div class="grid2">
+            <div class="fg full">
+              <label>계약번호</label>
+              <input type="text" id="cn2" class="ro" readonly placeholder="구매대상의 계약번호가 자동 반영됩니다" />
+            </div>
+            <div class="fg">
+              <label>납기일 <span class="tw tp">PDF</span></label>
+              <input type="text" id="delivery-date" placeholder="PDF 확인 후 직접 입력" />
+            </div>
+            <div class="fg">
+              <label>검수일 <span class="tw tp">PDF</span> <span class="tw th">수기</span></label>
+              <input type="text" id="inspection-date" placeholder="손글씨 확인 후 직접 입력" />
+            </div>
+            <div class="fg">
+              <label>전회누계검수 <span class="tw">웹</span></label>
+              <input type="text" id="prev-cumulative" placeholder="예: 5,000,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>금회검수금액 <span class="tw">웹</span></label>
+              <input type="text" id="current-inspection" placeholder="예: 3,000,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>누적검수금액 <span class="tw">웹</span></label>
+              <input type="text" id="cumulative-inspection" placeholder="예: 8,000,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>미검수잔액 <span class="tw">웹</span></label>
+              <input type="text" id="remaining-amount" placeholder="예: 4,500,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>검수결과 <span class="tw">웹</span></label>
+              <input type="text" id="inspection-result" placeholder="예: 합격" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 기타 계약조건 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">📋 기타 계약조건</span>
+          <button class="btog" onclick="tog('ob')">접기 ▲</button>
+        </div>
+        <div id="ob" class="card-body">
+          <div class="grid2">
+            <div class="fg full">
+              <label>계약번호</label>
+              <input type="text" id="cn3" class="ro" readonly placeholder="구매대상의 계약번호가 자동 반영됩니다" />
+            </div>
+            <div class="fg">
+              <label>하자보증금</label>
+              <input type="text" id="warranty-deposit" placeholder="예: 1,250,000" />
+              <span class="unit">원</span>
+            </div>
+            <div class="fg">
+              <label>하자보증기간</label>
+              <input type="text" id="warranty-period" placeholder="예: 1년 (2024.02~2025.01)" />
+            </div>
+            <div class="fg full">
+              <label>지체상금 <span class="tw">웹</span></label>
+              <input type="text" id="liquidated-damages" placeholder="예: 없음 / 1일 0.1%" />
+            </div>
+            <div class="fg full">
+              <label>지체/면제사유</label>
+              <input type="text" id="delay-reason" placeholder="해당 없음 또는 사유 입력" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 첨부파일 -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">📎 첨부파일 (입고검사서 등)</span>
+          <button class="btog" onclick="tog('fb')">접기 ▲</button>
+        </div>
+        <div id="fb" class="card-body">
+          <p class="hint">PDF 또는 이미지를 첨부하세요. 우측 뷰어에서 내용을 확인하며 <strong>계약번호·납기일·검수일</strong>을 입력하세요.</p>
+          <div class="dz" id="dz">
+            <span>파일을 드래그하거나 클릭하여 선택 (PDF, 이미지)</span>
+            <input type="file" id="fi" multiple accept=".pdf,.jpg,.jpeg,.png,.gif,.bmp,.tiff,.webp" />
+          </div>
+          <div class="flist" id="flist"></div>
+        </div>
+      </div>
+
+      <div class="gen-bar">
+        <button class="btn bs lg" onclick="generate()">결재문 생성</button>
+        <button class="btn bg lg" onclick="resetAll()">전체 초기화</button>
+      </div>
+    </div>
+
+    <!-- 우측 패널 -->
+    <div class="rp">
+      <div class="card vcard">
+        <div class="card-head">
+          <span class="card-title">📄 파일 뷰어</span>
+          <select id="vsel" onchange="switchV(this.value)">
+            <option value="">-- 첨부파일 선택 --</option>
+          </select>
+        </div>
+        <div id="vbody" class="vbody">
+          <div class="vph"><p>첨부파일을 업로드하면 여기서 확인할 수 있습니다.<br/>PDF의 계약번호·납기일·검수일을 확인하여 좌측에 입력하세요.</p></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">📝 결재문 미리보기</span>
+          <button class="btn bp sm" onclick="copyOut()" id="cbtn" disabled>복사</button>
+        </div>
+        <div class="card-body">
+          <pre id="out" class="opre">결재문 생성 버튼을 누르면 여기에 결과가 표시됩니다.</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hide"></div>
+
+<script>
+// ── 파일 목록 (blob URL 보관) ──
+const files = []; // { name, blobUrl, type }
+
+// ── 초기화 ──
+document.addEventListener('DOMContentLoaded', () => {
+  const dz = document.getElementById('dz');
+  const fi = document.getElementById('fi');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); loadFiles(e.dataTransfer.files); });
+  fi.addEventListener('change', () => { loadFiles(fi.files); fi.value = ''; });
+
+  document.querySelectorAll('input[name=part]').forEach(r =>
+    r.addEventListener('change', () => { if(r.checked) document.getElementById('part-custom').value=''; })
+  );
+  document.getElementById('part-custom').addEventListener('input', e => {
+    if(e.target.value) document.querySelectorAll('input[name=part]').forEach(r => r.checked=false);
+  });
+});
+
+// ── 섹션 토글 ──
+function tog(id) {
+  const el = document.getElementById(id);
+  const btn = el.previousElementSibling.querySelector('.btog');
+  const hidden = el.style.display === 'none';
+  el.style.display = hidden ? '' : 'none';
+  btn.textContent = hidden ? '접기 ▲' : '펼치기 ▼';
+}
+
+// ── 계약번호 동기화 ──
+function syncCN() {
+  const v = document.getElementById('contract-number').value;
+  document.getElementById('cn2').value = v;
+  document.getElementById('cn3').value = v;
+}
+
+// ── 파일 로드 (서버 없이 blob URL) ──
+function loadFiles(fileList) {
+  for (const f of fileList) {
+    const url = URL.createObjectURL(f);
+    const type = f.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image';
+    files.push({ name: f.name, blobUrl: url, type });
+  }
+  renderFiles();
+}
+
+function renderFiles() {
+  const c = document.getElementById('flist');
+  c.innerHTML = '';
+  files.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'fi';
+    div.innerHTML = `
+      <span class="ico">${f.type==='pdf'?'📄':'🖼️'}</span>
+      <span class="nm" title="${f.name}">${f.name}</span>
+      <button class="bv" onclick="viewFile(${i})">보기</button>
+      <button class="br" onclick="removeFile(${i})">×</button>`;
+    c.appendChild(div);
+  });
+  rebuildSel();
+}
+
+function removeFile(i) {
+  URL.revokeObjectURL(files[i].blobUrl);
+  files.splice(i, 1);
+  renderFiles();
+  document.getElementById('vbody').innerHTML = '<div class="vph"><p>파일을 선택하세요.</p></div>';
+}
+
+function rebuildSel() {
+  const sel = document.getElementById('vsel');
+  sel.innerHTML = '<option value="">-- 첨부파일 선택 --</option>';
+  files.forEach((f, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = f.name.length > 28 ? f.name.slice(0,28)+'…' : f.name;
+    sel.appendChild(o);
+  });
+  if (files.length) { sel.value = files.length-1; viewFile(files.length-1); }
+}
+
+function switchV(val) {
+  if (val === '') { document.getElementById('vbody').innerHTML='<div class="vph"><p>파일을 선택하세요.</p></div>'; return; }
+  viewFile(parseInt(val));
+}
+
+function viewFile(i) {
+  const f = files[i];
+  const vb = document.getElementById('vbody');
+  document.getElementById('vsel').value = i;
+  if (f.type === 'pdf') {
+    vb.innerHTML = `<iframe src="${f.blobUrl}" title="PDF 뷰어"></iframe>`;
+  } else {
+    vb.innerHTML = `<img src="${f.blobUrl}" alt="첨부이미지" />`;
+  }
+}
+
+// ── HTML 자동파싱 (브라우저 DOMParser 사용) ──
+function parseHtml() {
+  const raw = document.getElementById('hi').value.trim();
+  if (!raw) { showStatus('ps', 'HTML 내용을 붙여넣어 주세요.', 'err'); return; }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(raw, 'text/html');
+
+  // 스크립트·스타일 제거
+  doc.querySelectorAll('script,style').forEach(el => el.remove());
+
+  // 라벨→값 맵 구성
+  const map = {};
+  doc.querySelectorAll('table tr').forEach(row => {
+    const cells = [...row.querySelectorAll('td,th')].map(c => c.textContent.trim());
+    for (let i = 0; i < cells.length - 1; i++) {
+      if (cells[i]) map[cells[i]] = cells[i+1];
+    }
+  });
+  doc.querySelectorAll('dl').forEach(dl => {
+    const dts = [...dl.querySelectorAll('dt')];
+    const dds = [...dl.querySelectorAll('dd')];
+    dts.forEach((dt, i) => { if(dds[i]) map[dt.textContent.trim()] = dds[i].textContent.trim(); });
+  });
+
+  function find(keys) {
+    for (const [lbl, val] of Object.entries(map)) {
+      for (const k of keys) { if (lbl.includes(k)) return val.trim(); }
+    }
+    return '';
+  }
+
+  function fmtAmt(v) {
+    if (!v) return '';
+    v = v.replace(/천원/g, '000').replace(/[원\s]/g,'');
+    const n = parseInt(v.replace(/[^\d]/g,''));
+    return isNaN(n) ? v : n.toLocaleString();
+  }
+
+  const fullText = doc.body ? doc.body.textContent : '';
+
+  // 파트 감지
+  const partM = fullText.match(/(기계|전기|제어)/);
+
+  const extracted = {
+    part:               partM ? partM[1] : '',
+    contract_name:      find(['계약명','품목명','품명','공사명']),
+    contract_date:      find(['계약일자','계약일','계약 일자']),
+    contract_amount:    fmtAmt(find(['계약금액','총계약금액','총금액'])),
+    supplier:           find(['공급업체','업체명','거래처','납품업체','공급자']),
+    current_inspection: fmtAmt(find(['금회검수금액','금회검수','금회 검수'])),
+    prev_cumulative:    fmtAmt(find(['전회누계검수','전회누계','전회 누계'])),
+    cumulative:         fmtAmt(find(['누적검수금액','누적검수','누적 검수'])),
+    remaining:          fmtAmt(find(['미검수잔액','미검수 잔액','잔액'])),
+    inspection_result:  find(['검수결과','검수 결과']),
+    liquidated:         find(['지체상금']),
+  };
+
+  const fieldMap = {
+    contract_name:      'contract-name',
+    contract_date:      'contract-date',
+    contract_amount:    'contract-amount',
+    supplier:           'supplier',
+    current_inspection: 'current-inspection',
+    prev_cumulative:    'prev-cumulative',
+    cumulative:         'cumulative-inspection',
+    remaining:          'remaining-amount',
+    inspection_result:  'inspection-result',
+    liquidated:         'liquidated-damages',
+  };
+
+  let filled = 0;
+  if (extracted.part) { setPart(extracted.part); filled++; }
+  for (const [key, id] of Object.entries(fieldMap)) {
+    if (extracted[key]) {
+      const el = document.getElementById(id);
+      if (el && !el.value) { el.value = extracted[key]; filled++; }
+    }
+  }
+  syncCN();
+
+  showStatus('ps',
+    filled > 0 ? `${filled}개 항목이 자동 입력되었습니다. 내용을 확인·수정하세요.`
+               : 'HTML에서 항목을 찾지 못했습니다. 수동으로 입력해 주세요.',
+    filled > 0 ? 'ok' : 'err'
+  );
+}
+
+function setPart(val) {
+  let matched = false;
+  document.querySelectorAll('input[name=part]').forEach(r => {
+    if (r.value === val) { r.checked = true; matched = true; }
+  });
+  if (!matched) { document.getElementById('part-custom').value = val; }
+}
+
+function getPart() {
+  const c = document.getElementById('part-custom').value.trim();
+  if (c) return c;
+  const r = document.querySelector('input[name=part]:checked');
+  return r ? r.value : '';
+}
+
+// ── 결재문 생성 ──
+function generate() {
+  const cn = g('contract-number');
+  const fmt = v => { if(!v) return ''; if(/^[\d,]+$/.test(v)) return v+'원'; return v; };
+
+  const lines = [
+    '='.repeat(50),
+    '           구매검수 결재문',
+    '='.repeat(50),
+    '',
+    '▶ 구매대상',
+    `  파트         : ${getPart()}`,
+    `  계약명       : ${g('contract-name')}`,
+    `  계약번호     : ${cn}`,
+    `  계약일       : ${g('contract-date')}`,
+    `  계약금액     : ${fmt(g('contract-amount'))}`,
+    `  공급업체     : ${g('supplier')}`,
+    '',
+    '▶ 검수결과',
+    `  계약번호     : ${cn}`,
+    `  납기일       : ${g('delivery-date')}`,
+    `  검수일       : ${g('inspection-date')}`,
+    `  전회누계검수 : ${fmt(g('prev-cumulative'))}`,
+    `  금회검수금액 : ${fmt(g('current-inspection'))}`,
+    `  누적검수금액 : ${fmt(g('cumulative-inspection'))}`,
+    `  미검수잔액   : ${fmt(g('remaining-amount'))}`,
+    `  검수결과     : ${g('inspection-result')}`,
+    '',
+    '▶ 기타 계약조건',
+    `  계약번호     : ${cn}`,
+    `  하자보증금   : ${fmt(g('warranty-deposit'))}`,
+    `  하자보증기간 : ${g('warranty-period')}`,
+    `  지체상금     : ${g('liquidated-damages')}`,
+    `  지체/면제사유: ${g('delay-reason')}`,
+    '',
+  ];
+
+  if (files.length) {
+    lines.push('▶ 첨부파일');
+    files.forEach((f, i) => lines.push(`  ${i+1}. ${f.name}`));
+    lines.push('');
+  }
+
+  lines.push('='.repeat(50));
+
+  document.getElementById('out').textContent = lines.join('\n');
+  document.getElementById('cbtn').disabled = false;
+  toast('결재문이 생성되었습니다. 복사 버튼을 누르세요.');
+}
+
+function g(id) { return (document.getElementById(id)||{}).value?.trim() || ''; }
+
+// ── 복사 ──
+function copyOut() {
+  const text = document.getElementById('out').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => toast('클립보드에 복사되었습니다!'));
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); toast('클립보드에 복사되었습니다!');
+  }
+}
+
+// ── 초기화 ──
+function resetAll() {
+  if (!confirm('모든 입력 내용을 초기화하시겠습니까?')) return;
+  ['contract-name','contract-number','contract-date','contract-amount','supplier',
+   'delivery-date','inspection-date','prev-cumulative','current-inspection',
+   'cumulative-inspection','remaining-amount','inspection-result',
+   'warranty-deposit','warranty-period','liquidated-damages','delay-reason',
+   'cn2','cn3','part-custom','hi'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  document.querySelectorAll('input[name=part]').forEach(r => r.checked=false);
+  document.getElementById('out').textContent='결재문 생성 버튼을 누르면 여기에 결과가 표시됩니다.';
+  document.getElementById('cbtn').disabled=true;
+  document.getElementById('ps').className='smsg hide';
+  toast('초기화되었습니다.');
+}
+
+// ── 유틸 ──
+function showStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = `smsg ${cls}`;
+}
+
+let _tt;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.remove('hide');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.add('hide'), 2500);
+}
+</script>
+</body>
+</html>
